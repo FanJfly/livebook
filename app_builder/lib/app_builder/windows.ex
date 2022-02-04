@@ -8,6 +8,12 @@ defmodule AppBuilder.Windows do
   Creates a Windows installer.
   """
   def build_windows_installer(release, options) do
+    tmp_dir = release.path <> "_tmp"
+    File.rm_rf!(tmp_dir)
+    File.mkdir_p!(tmp_dir)
+
+    File.cp_r!(release.path, Path.join(tmp_dir, "rel"))
+
     options =
       Keyword.validate!(options, [
         :name,
@@ -18,19 +24,14 @@ defmodule AppBuilder.Windows do
 
     app_name = Keyword.fetch!(options, :name)
 
-    tmp_dir = "tmp"
-    File.mkdir_p!(tmp_dir)
-
     logo_path = options[:logo_path] || Application.app_dir(:wx, "examples/demo/erlang.png")
     app_icon_path = Path.join(tmp_dir, "app_icon.ico")
     copy_image(logo_path, app_icon_path)
 
-    erts_dir = Path.join([release.path, "erts-#{:erlang.system_info(:version)}"])
-    rcedit_path = ensure_rcedit(tmp_dir)
+    erts_dir = Path.join([tmp_dir, "rel", "erts-#{:erlang.system_info(:version)}"])
+    rcedit_path = Path.join(Mix.Project.build_path(), "rcedit")
+    ensure_rcedit(rcedit_path)
     cmd!(rcedit_path, ["--set-icon", app_icon_path, Path.join([erts_dir, "bin", "erl.exe"])])
-
-    File.rm_rf!("tmp/rel")
-    File.cp_r!(release.path, Path.join(tmp_dir, "rel"))
 
     File.write!(Path.join(tmp_dir, "#{app_name}.vbs"), launcher(release))
     nsi_path = Path.join(tmp_dir, "#{app_name}.nsi")
@@ -136,19 +137,12 @@ defmodule AppBuilder.Windows do
 
   EEx.function_from_string(:defp, :launcher, code, [:release], trim: true)
 
-  defp ensure_rcedit(tmp_dir) do
-    rcedit_path = Path.join([File.cwd!(), tmp_dir, "rcedit"])
-
-    unless File.exists?(rcedit_path) do
-      cmd!("curl", [
-        "-L",
-        "https://github.com/electron/rcedit/releases/download/v1.1.1/rcedit-x64.exe",
-        "-o",
-        rcedit_path
-      ])
+  # Use https://github.com/elixir-desktop/libpe when fixed
+  defp ensure_rcedit(path) do
+    unless File.exists?(path) do
+      url = "https://github.com/electron/rcedit/releases/download/v1.1.1/rcedit-x64.exe"
+      cmd!("curl", ["-L", url, "-o", path])
     end
-
-    rcedit_path
   end
 
   defp copy_image(src_path, dest_path) do
