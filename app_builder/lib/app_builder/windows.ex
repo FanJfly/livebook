@@ -121,7 +121,7 @@ defmodule AppBuilder.Windows do
   code = """
   ' This avoids a flashing cmd window when launching the bat file
   strPath = Left(Wscript.ScriptFullName, Len(Wscript.ScriptFullName) - Len(Wscript.ScriptName)) & "rel\\bin\\<%= release.name %>.bat"
-  ' Debug: MsgBox(strPath)
+  ' MsgBox(strPath)
 
   Dim Args()
   ReDim Args(WScript.Arguments.Count - 1)
@@ -131,6 +131,8 @@ defmodule AppBuilder.Windows do
   Next
 
   Set WshShell = CreateObject("WScript.Shell" )
+  Set WshSystemEnv = wshShell.Environment( "Process" )
+  WshSystemEnv("RELEASE_COOKIE") = "TODO"
   WshShell.Run \"""" & strPath & \""" start -- " & Join(Args), 0
   Set WshShell = Nothing
   """

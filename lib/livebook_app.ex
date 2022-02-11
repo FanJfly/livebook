@@ -1,4 +1,18 @@
 if Mix.target() == :app do
+  defmodule LivebookApp.Preboot do
+    use GenServer
+
+    def start_link(_) do
+      GenServer.start_link(__MODULE__, nil)
+    end
+
+    @impl true
+    def init(_) do
+      IO.inspect :foo
+      {:ok, nil}
+    end
+  end
+
   defmodule LivebookApp do
     @moduledoc false
 
@@ -9,6 +23,7 @@ if Mix.target() == :app do
 
     def start_link(_) do
       {:wx_ref, _, _, pid} = :wx_object.start_link(__MODULE__, [], [])
+      true = Process.register(pid, __MODULE__)
       {:ok, pid}
     end
 
